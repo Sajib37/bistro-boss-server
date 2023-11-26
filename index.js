@@ -2,12 +2,23 @@ const express = require('express')
 const app = express()
 const port = process.env.PORT || 5000
 const cors = require('cors')
+require('dotenv').config()
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 // middleWares
 app.use(cors())
 app.use(express.json())
+
+const verifyToken = (req, res, next) => {
+  console.log('Inside verify Token :', req.headers)
+  if (!req.headers.authorization) {
+    
+  }
+  const token = req.headers.authorization.split(' ')[1]
+  // next()
+}
 
 // ApI
 app.get('/', (req, res) => {
@@ -16,7 +27,7 @@ app.get('/', (req, res) => {
 
 
 
-const uri = "mongodb+srv://bistro-boss:4L2h1QWksZNEZbHu@cluster0.f30vajg.mongodb.net/?retryWrites=true&w=majority";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.f30vajg.mongodb.net/?retryWrites=true&w=majority`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -30,8 +41,19 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     
-    const menuCollection= client.db("bistro-boss").collection("menu")
+    const menuCollection = client.db("bistro-boss").collection("menu")
+    const reviewCollection = client.db("bistro-boss").collection('reviews')
+    const cartCollection = client.db("bistro-boss").collection('carts');
+    const userCollection = client.db('bistro-boss').collection('users');
     
+    // JWT related apis
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1h" })
+      res.send({token})
+    })
+
+
     //   get all menus
       app.get('/get/all/menu', async (req, res) => {
           const cursor = menuCollection.find();
@@ -46,7 +68,7 @@ async function run() {
           res.send(result)
       })
 
-      const reviewCollection= client.db("bistro-boss").collection('reviews')
+      
       //   get all reveiws
       app.get('/get/reviews', async (req, res) => {
           const result = await reviewCollection.find().toArray();
@@ -54,7 +76,7 @@ async function run() {
       })
     
     //  post single cart
-    const cartCollection = client.db("bistro-boss").collection('carts');
+    
 
     app.post("/post/cart", async (req, res) => {
       const newData = req.body;
@@ -80,7 +102,7 @@ async function run() {
     })
 
 
-    const userCollection = client.db('bistro-boss').collection('users');
+    
     // post new user
     app.post('/post/user', async (req, res) => {
       const newUser = req.body;
@@ -97,7 +119,7 @@ async function run() {
     })
     
     // get all users
-    app.get('/get/users', async (req, res) => {
+    app.get('/get/users',verifyToken, async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users)
     })
